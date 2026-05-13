@@ -3,9 +3,9 @@ package tokenize_test
 import (
 	"iter"
 	"slices"
-	"strings"
 	"testing"
 
+	"github.com/subtributary/search/internal/shared"
 	"github.com/subtributary/search/internal/tokenize"
 )
 
@@ -21,19 +21,6 @@ func echo(text string) echoTokenizer {
 	return echoTokenizer{text}
 }
 
-func uppercase(s string) string {
-	return strings.ToUpper(s)
-}
-
-func truncate(n int) func(string) string {
-	return func(s string) string {
-		if len(s) < n {
-			return s
-		}
-		return s[:n]
-	}
-}
-
 func TestSmartTokenizer(t *testing.T) {
 	t.Parallel()
 
@@ -47,27 +34,35 @@ func TestSmartTokenizer(t *testing.T) {
 			name: "empty",
 			text: "",
 			tokenizer: tokenize.NewSmartTokenizer(
-				tokenize.WithScriptTokenizer("Latin", echo("hello")),
+				map[shared.Script]tokenize.Tokenizer{
+					"Latin": echo("hello"),
+				},
 			),
 			want: []string{},
 		},
 		{
-			name:      "unconfigured",
-			text:      "hello world",
-			tokenizer: tokenize.NewSmartTokenizer(),
-			want:      []string{},
+			name: "unconfigured",
+			text: "hello world",
+			tokenizer: tokenize.NewSmartTokenizer(
+				map[shared.Script]tokenize.Tokenizer{},
+			),
+			want: []string{},
 		},
 		{
-			name:      "empty and unconfigured tokens",
-			text:      "",
-			tokenizer: tokenize.NewSmartTokenizer(),
-			want:      []string{},
+			name: "empty and unconfigured tokens",
+			text: "",
+			tokenizer: tokenize.NewSmartTokenizer(
+				map[shared.Script]tokenize.Tokenizer{},
+			),
+			want: []string{},
 		},
 		{
 			name: "single word",
 			text: "hello",
 			tokenizer: tokenize.NewSmartTokenizer(
-				tokenize.WithScriptTokenizer("Latin", echo("hello")),
+				map[shared.Script]tokenize.Tokenizer{
+					"Latin": echo("hello"),
+				},
 			),
 			want: []string{"hello"},
 		},
@@ -75,7 +70,9 @@ func TestSmartTokenizer(t *testing.T) {
 			name: "single script",
 			text: "hello world",
 			tokenizer: tokenize.NewSmartTokenizer(
-				tokenize.WithScriptTokenizer("Latin", echo("hello")),
+				map[shared.Script]tokenize.Tokenizer{
+					"Latin": echo("hello"),
+				},
 			),
 			want: []string{"hello"},
 		},
@@ -83,29 +80,12 @@ func TestSmartTokenizer(t *testing.T) {
 			name: "two scripts",
 			text: "world 안녕",
 			tokenizer: tokenize.NewSmartTokenizer(
-				tokenize.WithScriptTokenizer("Latin", echo("hello")),
-				tokenize.WithScriptTokenizer("Hangul", echo("world")),
+				map[shared.Script]tokenize.Tokenizer{
+					"Latin":  echo("hello"),
+					"Hangul": echo("world"),
+				},
 			),
 			want: []string{"hello", "world"},
-		},
-		{
-			name: "single normalizer",
-			text: "hello world",
-			tokenizer: tokenize.NewSmartTokenizer(
-				tokenize.WithScriptTokenizer("Latin", echo("hello")),
-				tokenize.WithScriptNormalizer("Latin", uppercase),
-			),
-			want: []string{"HELLO"},
-		},
-		{
-			name: "double normalizer",
-			text: "hello world",
-			tokenizer: tokenize.NewSmartTokenizer(
-				tokenize.WithScriptTokenizer("Latin", echo("hello")),
-				tokenize.WithScriptNormalizer("Latin", uppercase),
-				tokenize.WithScriptNormalizer("Latin", truncate(3)),
-			),
-			want: []string{"HEL"},
 		},
 	}
 
@@ -113,7 +93,14 @@ func TestSmartTokenizer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := slices.Collect(tt.tokenizer.Tokens(tt.text))
+			tokens := tt.tokenizer.Tokens(tt.text)
+
+			// We only want the text. If it's right, the script is too.
+			var got []string
+			for _, text := range tokens {
+				got = append(got, text)
+			}
+
 			if !slices.Equal(got, tt.want) {
 				t.Errorf("Tokens: got %v, want %v", got, tt.want)
 			}

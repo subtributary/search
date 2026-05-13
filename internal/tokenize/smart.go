@@ -2,6 +2,8 @@ package tokenize
 
 import (
 	"iter"
+
+	"github.com/subtributary/search/internal/shared"
 )
 
 // Tokenizer types implement a tokenization algorithm that can be delegated to
@@ -11,47 +13,22 @@ type Tokenizer interface {
 }
 
 // SmartTokenizer is the top-level tokenizer that delegates work to other
-// tokenizers and normalizers depending on the script.
-//
-// Text is segmented by script, a per-script tokenizer further tokenizes it,
-// then per-script normalizers are run in order on the subtokens. If no script
-// tokenizer is configured, then the script's text is skipped.
+// tokenizers depending on the script. If no script is configured for a script,
+// then its text is skipped.
 type SmartTokenizer struct {
-	main  ScriptTokenizer
-	norms map[Script][]Normalizer
-	subs  map[Script]Tokenizer
+	main ScriptTokenizer
+	subs map[shared.Script]Tokenizer
 }
 
-type SmartOption func(*SmartTokenizer)
-
-func WithScriptTokenizer(script Script, tokenizer Tokenizer) SmartOption {
-	return func(t *SmartTokenizer) {
-		t.subs[script] = tokenizer
+func NewSmartTokenizer(subs map[shared.Script]Tokenizer) SmartTokenizer {
+	return SmartTokenizer{
+		main: NewScriptTokenizer(),
+		subs: subs,
 	}
 }
 
-func WithScriptNormalizer(script Script, norm Normalizer) SmartOption {
-	return func(t *SmartTokenizer) {
-		t.norms[script] = append(t.norms[script], norm)
-	}
-}
-
-func NewSmartTokenizer(opts ...SmartOption) SmartTokenizer {
-	t := SmartTokenizer{
-		main:  NewScriptTokenizer(),
-		norms: make(map[Script][]Normalizer),
-		subs:  make(map[Script]Tokenizer),
-	}
-
-	for _, opt := range opts {
-		opt(&t)
-	}
-
-	return t
-}
-
-func (t SmartTokenizer) Tokens(text string) iter.Seq[string] {
-	return func(yield func(string) bool) {
+func (t SmartTokenizer) Tokens(text string) iter.Seq2[shared.Script, string] {
+	return func(yield func(shared.Script, string) bool) {
 		for script, token := range t.main.Tokens(text) {
 			tokenizer, ok := t.subs[script]
 			if !ok {
@@ -60,13 +37,8 @@ func (t SmartTokenizer) Tokens(text string) iter.Seq[string] {
 				continue
 			}
 
-			normalizers := t.norms[script]
-
 			for subtoken := range tokenizer.Tokens(token) {
-				for _, n := range normalizers {
-					subtoken = n(subtoken)
-				}
-				if !yield(subtoken) {
+				if !yield(script, subtoken) {
 					return
 				}
 			}

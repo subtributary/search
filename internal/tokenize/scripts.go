@@ -2,12 +2,10 @@ package tokenize
 
 import (
 	"iter"
-	"unicode"
 	"unicode/utf8"
-)
 
-// Script is the name of a Unicode script or empty for the Common script.
-type Script string
+	"github.com/subtributary/search/internal/shared"
+)
 
 type ScriptTokenizer struct{}
 
@@ -15,9 +13,9 @@ func NewScriptTokenizer() ScriptTokenizer {
 	return ScriptTokenizer{}
 }
 
-func (t ScriptTokenizer) Tokens(text string) iter.Seq2[Script, string] {
-	return func(yield func(Script, string) bool) {
-		var script Script
+func (t ScriptTokenizer) Tokens(text string) iter.Seq2[shared.Script, string] {
+	return func(yield func(shared.Script, string) bool) {
+		var script shared.Script
 		var length int
 		for ; len(text) > 0; text = text[length:] {
 			script, length = currentScript(text)
@@ -37,14 +35,14 @@ func (t ScriptTokenizer) Tokens(text string) iter.Seq2[Script, string] {
 
 // currentScript returns the current script's length and name.
 // Characters in the Common script are consumed without breaking.
-func currentScript(text string) (Script, int) {
+func currentScript(text string) (shared.Script, int) {
 	c, n := utf8.DecodeRuneInString(text)
-	initScript := detectScript(c)
+	initScript := shared.DetectScript(c)
 
 	i := n
 	for ; i < len(text); i += n {
 		c, n = utf8.DecodeRuneInString(text[i:])
-		script := detectScript(c)
+		script := shared.DetectScript(c)
 
 		if script == "" {
 			// Common script doesn't break.
@@ -57,15 +55,4 @@ func currentScript(text string) (Script, int) {
 	}
 
 	return initScript, i
-}
-
-func detectScript(c rune) Script {
-	if !unicode.Is(unicode.Common, c) {
-		for name, rt := range unicode.Scripts {
-			if unicode.Is(rt, c) {
-				return Script(name)
-			}
-		}
-	}
-	return ""
 }
