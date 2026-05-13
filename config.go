@@ -5,4 +5,7 @@ type Config struct {
 	Scripts map[string]ScriptConfig `json:"scripts"`
 }
 
-type ScriptConfig struct{}
+type ScriptConfig struct {
+	Tokenizer   string   `json:"tokenizer"`
+	Normalizers []string `json:"normalizers"`
+}
