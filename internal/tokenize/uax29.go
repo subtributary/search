@@ -18,7 +18,7 @@ func NewUAX29() UAX29 {
 	return UAX29{}
 }
 
-func (u UAX29) Tokens(text string) iter.Seq[string] {
+func (t UAX29) Tokens(text string) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		c, n := utf8.DecodeRuneInString(text)
 

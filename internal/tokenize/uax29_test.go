@@ -109,8 +109,6 @@ func TestUAX29(t *testing.T) {
 			tokens := slices.Collect(subject.Tokens(tt.text))
 
 			if !slices.Equal(tokens, tt.want) {
-				tr := []rune(tokens[0])
-				t.Errorf("got %#x", tr)
 				t.Errorf("Tokens: want %#v, got %#v", tt.want, tokens)
 			}
 		})
