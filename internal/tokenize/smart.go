@@ -1,9 +1,8 @@
 package tokenize
 
 import (
+	"fmt"
 	"iter"
-
-	"github.com/subtributary/search/internal/shared"
 )
 
 // Tokenizer types implement a tokenization algorithm that can be delegated to
@@ -17,23 +16,46 @@ type Tokenizer interface {
 // then its text is skipped.
 type SmartTokenizer struct {
 	main ScriptTokenizer
-	subs map[shared.Script]Tokenizer
+	subs map[string]Tokenizer
 }
 
-func NewSmartTokenizer(subs map[shared.Script]Tokenizer) SmartTokenizer {
+func NewSmartTokenizer() SmartTokenizer {
 	return SmartTokenizer{
 		main: NewScriptTokenizer(),
-		subs: subs,
+		subs: make(map[string]Tokenizer),
 	}
 }
 
-func (t SmartTokenizer) Tokens(text string) iter.Seq2[shared.Script, string] {
-	return func(yield func(shared.Script, string) bool) {
+// SetSubTokenizer sets the tokenizer to use for a specific script.
+// If the id is invalid, an error is returned.
+func (t *SmartTokenizer) SetSubTokenizer(script string, id string) error {
+	switch id {
+	case "unigram":
+		t.subs[script] = NewNGram(1, 1)
+	case "bigram":
+		t.subs[script] = NewNGram(2, 2)
+	case "trigram":
+		t.subs[script] = NewNGram(3, 3)
+	case "unigram bigram":
+		t.subs[script] = NewNGram(1, 2)
+	case "bigram trigram":
+		t.subs[script] = NewNGram(2, 3)
+	case "unigram bigram trigram":
+		t.subs[script] = NewNGram(1, 3)
+	case "uax29":
+		t.subs[script] = NewUAX29()
+	default:
+		return fmt.Errorf("invalid tokenizer: %s", id)
+	}
+	return nil
+}
+
+func (t *SmartTokenizer) Tokens(text string) iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
 		for script, token := range t.main.Tokens(text) {
 			tokenizer, ok := t.subs[script]
 			if !ok {
 				// If no tokenizer is configured for the script, it is a no-op.
-				// This ensures backwards compatibility for new scripts.
 				continue
 			}
 

@@ -2,14 +2,14 @@ package normalize
 
 import "strings"
 
-// CasingNormalizer changes everything to lowercase.
+// CaseNormalizer changes everything to lowercase.
 // It's wrong sometimes, such as for the Turkish 'I', but it's consistent.
-type CasingNormalizer struct{}
+type CaseNormalizer struct{}
 
-func NewCasingNormalizer() CasingNormalizer {
-	return CasingNormalizer{}
+func NewCaseNormalizer() CaseNormalizer {
+	return CaseNormalizer{}
 }
 
-func (CasingNormalizer) Normalize(text string) string {
+func (CaseNormalizer) Normalize(text string) string {
 	return strings.ToLower(text)
 }

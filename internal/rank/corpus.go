@@ -1,7 +1,5 @@
 package rank
 
-type Field string
-
 type Stream struct {
 	length     int
 	termCounts map[string]int
