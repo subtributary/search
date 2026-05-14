@@ -1,5 +1,11 @@
 package search
 
+import (
+	"fmt"
+
+	"github.com/subtributary/search/internal/tokenize"
+)
+
 type Tokenizer string
 
 var (
@@ -28,3 +34,24 @@ var (
 	// based on Unicode Standard Annex (UAX) #29.
 	UAX29 Tokenizer = "uax29"
 )
+
+func (t Tokenizer) toInternal() (tokenize.Tokenizer, error) {
+	switch t {
+	case "unigram":
+		return tokenize.NewNGram(1, 1), nil
+	case "bigram":
+		return tokenize.NewNGram(2, 2), nil
+	case "trigram":
+		return tokenize.NewNGram(3, 3), nil
+	case "unigram bigram":
+		return tokenize.NewNGram(1, 2), nil
+	case "bigram trigram":
+		return tokenize.NewNGram(2, 3), nil
+	case "unigram bigram trigram":
+		return tokenize.NewNGram(1, 3), nil
+	case "uax29":
+		return tokenize.NewUAX29(), nil
+	default:
+		return nil, fmt.Errorf("invalid tokenizer: %s", t)
+	}
+}

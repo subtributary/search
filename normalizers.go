@@ -1,5 +1,12 @@
 package search
 
+import (
+	"fmt"
+
+	"github.com/subtributary/search/internal/normalize"
+	"golang.org/x/text/unicode/norm"
+)
+
 type Normalizer string
 
 // I don't see a reason to use anything other than `text -> Lowercase -> NFKC`,
@@ -32,10 +39,19 @@ var (
 	NFKD Normalizer = "nfkd"
 )
 
-func stringsFromNorms(src []Normalizer) []string { //
-	casts := make([]string, len(src))
-	for i, v := range src {
-		casts[i] = string(v)
+func (n Normalizer) toInternal() (normalize.Normalizer, error) {
+	switch n {
+	case "lowercase":
+		return normalize.NewCaseNormalizer(), nil
+	case "nfc":
+		return normalize.NewUnicodeNormalizer(norm.NFC), nil
+	case "nfd":
+		return normalize.NewUnicodeNormalizer(norm.NFD), nil
+	case "nfkc":
+		return normalize.NewUnicodeNormalizer(norm.NFKC), nil
+	case "nfkd":
+		return normalize.NewUnicodeNormalizer(norm.NFKD), nil
+	default:
+		return nil, fmt.Errorf("invalid normalizer: %s", n)
 	}
-	return casts
 }

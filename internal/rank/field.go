@@ -3,8 +3,6 @@ package rank
 type Field string
 
 type FieldConfig struct {
-	Name string
-
 	// Weight is the relative weight of the field.
 	// The field that has the bulk of the content should be 1.
 	Weight float64

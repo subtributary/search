@@ -1,7 +1,6 @@
 package tokenize
 
 import (
-	"fmt"
 	"iter"
 )
 
@@ -28,28 +27,11 @@ func NewSmartTokenizer() SmartTokenizer {
 
 // SetSubTokenizer sets the tokenizer to use for a specific script.
 // If the id is invalid, an error is returned.
-func (t *SmartTokenizer) SetSubTokenizer(script string, id string) error {
-	switch id {
-	case "unigram":
-		t.subs[script] = NewNGram(1, 1)
-	case "bigram":
-		t.subs[script] = NewNGram(2, 2)
-	case "trigram":
-		t.subs[script] = NewNGram(3, 3)
-	case "unigram bigram":
-		t.subs[script] = NewNGram(1, 2)
-	case "bigram trigram":
-		t.subs[script] = NewNGram(2, 3)
-	case "unigram bigram trigram":
-		t.subs[script] = NewNGram(1, 3)
-	case "uax29":
-		t.subs[script] = NewUAX29()
-	default:
-		return fmt.Errorf("invalid tokenizer: %s", id)
-	}
-	return nil
+func (t *SmartTokenizer) SetSubTokenizer(script string, tok Tokenizer) {
+	t.subs[script] = tok
 }
 
+// Tokens returns tokenized text as pairs of <script, token>.
 func (t *SmartTokenizer) Tokens(text string) iter.Seq2[string, string] {
 	return func(yield func(string, string) bool) {
 		for script, token := range t.main.Tokens(text) {
