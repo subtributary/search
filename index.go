@@ -10,54 +10,48 @@ import (
 	"github.com/subtributary/search/internal/tokenize"
 )
 
-type Option func(*Index) error
+const version = "0.1.0"
 
-// WithField configures a document field for searching.
-//
-// weight is the relative weight of the field.
-// A value of 1 should be used for the main part of the document.
-func WithField(field string, weight float64) Option {
-	const b = 0.72 // document length normalization strength
-	return func(idx *Index) error {
-		field := rank.Field(field)
-		idx.fieldConfigs[field] = rank.FieldConfig{
-			Weight: weight,
-			B:      b,
-		}
-		return nil
-	}
+type savedState struct {
+	Version     string                          `json:"version"`
+	Normalizers map[string][]Normalizer         `json:"normalizers"`
+	Tokenizers  map[string]Tokenizer            `json:"tokenizers"`
+	Fields      map[rank.Field]rank.FieldConfig `json:"fields"`
+	Corpus      rank.Corpus                     `json:"corpus"`
 }
 
-// WithNormalizers sets normalizers to use for a script.
-// The script must match one in Go's Unicode library.
-func WithNormalizers(script string, ids []Normalizer) Option {
-	return func(idx *Index) error {
-		norms := make([]normalize.Normalizer, len(ids))
-		for i, id := range ids {
-			if norm, err := id.toInternal(); err != nil {
-				return err
-			} else {
-				norms[i] = norm
-			}
-		}
-		idx.normalizers[script] = ids
-		idx.normalizer.SetSubNormalizers(script, norms)
-		return nil
+func (s *savedState) apply(idx *Index) error {
+	if currVer, err := parseSemVer(version); err != nil {
+		return fmt.Errorf("invalid current version: %s", version)
+	} else if srcVer, err := parseSemVer(s.Version); err != nil {
+		return fmt.Errorf("invalid version: %s", s.Version)
+	} else if !currVer.canLoad(srcVer) {
+		return fmt.Errorf("unable to load version: %s", s.Version)
 	}
-}
 
-// WithTokenizer sets the tokenizer to use for a script.
-// The script must match one in Go's Unicode library.
-func WithTokenizer(script string, id Tokenizer) Option {
-	return func(idx *Index) error {
-		idx.tokenizers[script] = id
-		if tok, err := id.toInternal(); err != nil {
-			return err
-		} else {
-			idx.tokenizer.SetSubTokenizer(script, tok)
+	// These are fully serialized so can just be set as-is.
+	idx.fieldConfigs = s.Fields
+	idx.corpus = s.Corpus
+
+	// Normalizers only save their configurations, so they need rebuilt.
+	idx.normalizer = normalize.NewSmartNormalizer()
+	idx.normalizers = map[string][]Normalizer{}
+	for script, norms := range s.Normalizers {
+		if err := WithNormalizers(script, norms)(idx); err != nil {
+			return fmt.Errorf("instantiating normalizer: %w", err)
 		}
-		return nil
 	}
+
+	// Tokenizers only save their configurations, so they need rebuilt.
+	idx.tokenizer = tokenize.NewSmartTokenizer()
+	idx.tokenizers = map[string]Tokenizer{}
+	for script, tok := range s.Tokenizers {
+		if err := WithTokenizer(script, tok)(idx); err != nil {
+			return fmt.Errorf("instantiating tokenizer: %w", err)
+		}
+	}
+
+	return nil
 }
 
 type Index struct {
@@ -82,23 +76,10 @@ func NewIndex(opts ...Option) (*Index, error) {
 		tokenizer:    tokenize.NewSmartTokenizer(),
 	}
 
-	// Default normalizers and tokenizers for all scripts
-	defaults := make([]Option, 0, len(scripts)+3)
-	norms := []Normalizer{NFKC, Lowercase}
-	for _, script := range scripts {
-		defaults = append(defaults, WithNormalizers(script, norms))
-		defaults = append(defaults, WithTokenizer(script, UAX29))
-	}
-	defaults = append(defaults, WithTokenizer("Katakana", BigramTrigram))
-	defaults = append(defaults, WithTokenizer("Han", UnigramBigram))
-	defaults = append(defaults, WithTokenizer("Hiragana", BigramTrigram))
-	for _, opt := range defaults {
-		if err := opt(idx); err != nil {
-			return nil, fmt.Errorf("default option: %w", err)
-		}
+	if err := withDefaults()(idx); err != nil {
+		return nil, fmt.Errorf("error setting default options: %w", err)
 	}
 
-	// Apply customizations
 	for _, opt := range opts {
 		if err := opt(idx); err != nil {
 			return nil, err
@@ -109,19 +90,21 @@ func NewIndex(opts ...Option) (*Index, error) {
 }
 
 func (idx *Index) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Version     string                          `json:"version"`
-		Normalizers map[string][]Normalizer         `json:"normalizers"`
-		Tokenizers  map[string]Tokenizer            `json:"tokenizers"`
-		Fields      map[rank.Field]rank.FieldConfig `json:"fields"`
-		Corpus      rank.Corpus                     `json:"corpus"`
-	}{
-		Version:     Version,
+	return json.Marshal(&savedState{
+		Version:     version,
 		Normalizers: idx.normalizers,
 		Tokenizers:  idx.tokenizers,
 		Fields:      idx.fieldConfigs,
 		Corpus:      idx.corpus,
 	})
+}
+
+func (idx *Index) UnmarshalJSON(data []byte) error {
+	var state savedState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return err
+	}
+	return state.apply(idx)
 }
 
 // Upsert parses document fields and upserts the document into the corpus.
@@ -144,7 +127,7 @@ func (idx *Index) Upsert(id string, fields map[string]string) error {
 	// Validation
 	if len(document.Streams) != len(idx.fieldConfigs) {
 		var missing []string
-		for field, _ := range idx.fieldConfigs {
+		for field := range idx.fieldConfigs {
 			if _, ok := document.Streams[field]; !ok {
 				missing = append(missing, string(field))
 			}
