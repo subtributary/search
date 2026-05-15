@@ -26,3 +26,58 @@ Version 1.0 will be released after its successful full integration into our
 go get "github.com/subtributary/search"
 ```
 
+To create an index:
+
+```go
+index, err := search.NewIndex(
+    search.WithField("title", 5.0),
+    search.WithField("content", 1.0),
+)
+```
+
+To add a document to the index:
+
+```go
+err := index.Upsert(unique_id, map[string]string{
+    "title":   title,
+    "content": content,
+})
+```
+
+Configured fields are parsed then thrown away.
+To attach data to be returned with results:
+
+```go
+err := index.Upsert(unique_id, map[string]string{
+    "title":         title,
+    "content":       content,
+	// display_title won't be parsed but will be returned with results.
+	"display_title": title
+})
+```
+
+To search through the corpus and print the results:
+
+```go
+results := index.Search(query)
+for result := range results {
+	id := result.Id
+	title := result.Attachments["display_title"]
+	fmt.Printf("id: %-*s title: %s", 15, id, title)
+}
+```
+
+To save the index to a file:
+
+```go
+data, err := json.Marshal(index)
+err := os.WriteFile(filename, data, fs.ModePerm)
+```
+
+To load the index from file:
+
+```go
+data, err := os.ReadFile(filename)
+var index search.Index
+err := json.Unmarshal(data, &index)
+```
