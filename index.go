@@ -126,19 +126,16 @@ func (idx *Index) MarshalJSON() ([]byte, error) {
 
 // Upsert parses document fields and upserts the document into the corpus.
 //
-// Unconfigured fields will not be parsed, but they will be attached unchanged
-// to search results. Configured fields are the opposite: they are parsed but
-// not attached to search results. To have both, separate fields are needed.
-//
-// todo: ensure all configured fields are set.
+// Fields that have a configuration are parsed into internal metadata,
+// but fields that do not have a configuration are treated as attachments.
+// Attachments are returned unaltered alongside search results.
 func (idx *Index) Upsert(id string, fields map[string]string) error {
 	document := rank.NewDocument()
 	for field, text := range fields {
-		field := rank.Field(field)
-		if _, ok := idx.fieldConfigs[field]; !ok {
+		if _, ok := idx.fieldConfigs[rank.Field(field)]; !ok {
 			document.SetAttachment(field, text)
 		} else {
-			document.SetStream(field, idx.tokenize(text))
+			document.SetStream(rank.Field(field), idx.tokenize(text))
 		}
 	}
 
@@ -157,6 +154,35 @@ func (idx *Index) Upsert(id string, fields map[string]string) error {
 	return nil
 }
 
+type Result struct {
+	// Id is the identifier of the document used when calling Index.Upsert.
+	Id string
+
+	// Attachments stores additional user data associated with the document.
+	Attachments map[string]string
+}
+
+// Search returns all documents sorted by how well they match the query.
+// The best match is returned first.
+// Equal matches are returned in alphabetical order by their id.
+func (idx *Index) Search(query string) iter.Seq[Result] {
+	queryTokens := idx.tokenize(query)
+	bm := rank.NewBM25F(1.2, idx.fieldConfigs)
+	results := bm.Rank(idx.corpus, queryTokens)
+
+	return func(yield func(Result) bool) {
+		for _, result := range results {
+			converted := Result{
+				Id:          result.Id,
+				Attachments: result.Document.Attachments,
+			}
+			if !yield(converted) {
+				return
+			}
+		}
+	}
+}
+
 func (idx *Index) tokenize(text string) []string {
 	tokens := make([]string, 0)
 	for script, token := range idx.tokenizer.Tokens(text) {
@@ -164,18 +190,4 @@ func (idx *Index) tokenize(text string) []string {
 		tokens = append(tokens, token)
 	}
 	return tokens
-}
-
-type Result struct {
-	Id          string
-	Attachments map[string]string
-}
-
-func (idx *Index) Search(query string) iter.Seq[Result] {
-	return nil
-}
-
-// Version returns the version number of search used to create the index.
-func (idx *Index) Version() string {
-	return idx.version
 }

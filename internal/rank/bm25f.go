@@ -16,7 +16,7 @@ func NewBM25F(k1 float64, fieldConfigs map[Field]FieldConfig) BM25F {
 }
 
 type Result struct {
-	Name     string
+	Id       string
 	Document Document
 
 	// score is not visible because it only has relative meaning for ranking.
@@ -32,9 +32,9 @@ func (bm BM25F) Rank(corpus Corpus, query []string) []Result {
 
 	// Init the results with document data and 0 scores.
 	results := make([]Result, 0, len(corpus.Documents))
-	for name, doc := range corpus.Documents {
+	for id, doc := range corpus.Documents {
 		results = append(results, Result{
-			Name:     name,
+			Id:       id,
 			Document: doc,
 			score:    0.0,
 		})
@@ -58,7 +58,7 @@ func (bm BM25F) Rank(corpus Corpus, query []string) []Result {
 		if c := cmp.Compare(b.score, a.score); c != 0 {
 			return c
 		}
-		return cmp.Compare(a.Name, b.Name)
+		return cmp.Compare(a.Id, b.Id)
 	})
 
 	return results

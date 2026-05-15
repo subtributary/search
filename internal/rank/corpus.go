@@ -15,20 +15,19 @@ func NewStream(tokens []string) (s Stream) {
 }
 
 type Document struct {
-	Attachments map[Field]string `json:"attachments"`
-	Streams     map[Field]Stream `json:"streams"`
+	Attachments map[string]string `json:"attachments"`
+	Streams     map[Field]Stream  `json:"streams"`
 }
 
 func NewDocument() (d Document) {
-	d.Attachments = make(map[Field]string)
+	d.Attachments = make(map[string]string)
 	d.Streams = make(map[Field]Stream)
 	return
 }
 
-// SetAttachment sets extra field data that is not used by BM25F.
-// This can be used to return unaltered text associated with a document.
-func (d Document) SetAttachment(field Field, text string) {
-	d.Attachments[field] = text
+// SetAttachment sets attached data that is not parsed or used by BM25F.
+func (d Document) SetAttachment(id string, text string) {
+	d.Attachments[id] = text
 }
 
 func (d Document) SetStream(field Field, tokens []string) {

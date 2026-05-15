@@ -50,8 +50,8 @@ func TestBM25F_Rank(t *testing.T) {
 			want: []rank.Result{
 				// Both are empty and score the same,
 				// so they are sorted alphabetically by title.
-				{Name: "empty1", Document: emptyDoc},
-				{Name: "empty2", Document: emptyDoc},
+				{Id: "empty1", Document: emptyDoc},
+				{Id: "empty2", Document: emptyDoc},
 			},
 		},
 		{
@@ -63,8 +63,8 @@ func TestBM25F_Rank(t *testing.T) {
 			query: "tulip",
 			want: []rank.Result{
 				// Only natureDoc has the word "tulip", so it is listed first.
-				{Name: "nature", Document: natureDoc},
-				{Name: "empty", Document: emptyDoc},
+				{Id: "nature", Document: natureDoc},
+				{Id: "empty", Document: emptyDoc},
 			},
 		},
 		{
@@ -78,9 +78,9 @@ func TestBM25F_Rank(t *testing.T) {
 			want: []rank.Result{
 				// helloDoc and natureDoc both have one "word" in the body,
 				// so they are sorted alphabetically by title.
-				{Name: "hello", Document: helloDoc},
-				{Name: "nature", Document: natureDoc},
-				{Name: "empty", Document: emptyDoc},
+				{Id: "hello", Document: helloDoc},
+				{Id: "nature", Document: natureDoc},
+				{Id: "empty", Document: emptyDoc},
 			},
 		},
 		{
@@ -94,9 +94,9 @@ func TestBM25F_Rank(t *testing.T) {
 			want: []rank.Result{
 				// natureDoc and helloDoc both contain the word "blue",
 				// but the word is more frequent in natureDoc.
-				{Name: "nature", Document: natureDoc},
-				{Name: "hello", Document: helloDoc},
-				{Name: "empty", Document: emptyDoc},
+				{Id: "nature", Document: natureDoc},
+				{Id: "hello", Document: helloDoc},
+				{Id: "empty", Document: emptyDoc},
 			},
 		},
 		{
@@ -110,9 +110,9 @@ func TestBM25F_Rank(t *testing.T) {
 			want: []rank.Result{
 				// natureDoc and helloDoc both contain the world "blue",
 				// but helloDoc also contains "hello" in its title.
-				{Name: "hello", Document: helloDoc},
-				{Name: "nature", Document: natureDoc},
-				{Name: "empty", Document: emptyDoc},
+				{Id: "hello", Document: helloDoc},
+				{Id: "nature", Document: natureDoc},
+				{Id: "empty", Document: emptyDoc},
 			},
 		},
 	}
@@ -120,7 +120,7 @@ func TestBM25F_Rank(t *testing.T) {
 	extractNames := func(src []rank.Result) []string {
 		results := make([]string, len(src))
 		for i, result := range src {
-			results[i] = result.Name
+			results[i] = result.Id
 		}
 		return results
 	}
