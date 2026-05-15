@@ -31,6 +31,8 @@ var documents = map[string]map[string]string{
 	},
 }
 
+// todo: assert that all configured fields are added to documents
+
 func TestIndex(t *testing.T) {
 	t.Parallel()
 

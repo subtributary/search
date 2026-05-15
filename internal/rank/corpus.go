@@ -73,6 +73,7 @@ func (c *Corpus) Remove(id string) {
 	}
 }
 
+// Upsert processes and adds a document into the corpus.
 func (c *Corpus) Upsert(id string, document Document) {
 	c.Remove(id)
 
@@ -87,4 +88,11 @@ func (c *Corpus) Upsert(id string, document Document) {
 			c.DocsWithTerm[term]++
 		}
 	}
+}
+
+func (c *Corpus) AvgStreamLength(field Field) float64 {
+	if docCount := len(c.Documents); docCount > 0 {
+		return float64(c.TotalLengths[field]) / float64(docCount)
+	}
+	return 0
 }

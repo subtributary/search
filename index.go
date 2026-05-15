@@ -129,6 +129,8 @@ func (idx *Index) MarshalJSON() ([]byte, error) {
 // Unconfigured fields will not be parsed, but they will be attached unchanged
 // to search results. Configured fields are the opposite: they are parsed but
 // not attached to search results. To have both, separate fields are needed.
+//
+// todo: ensure all configured fields are set.
 func (idx *Index) Upsert(id string, fields map[string]string) {
 	document := rank.NewDocument()
 	for field, text := range fields {
