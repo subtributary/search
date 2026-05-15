@@ -24,8 +24,8 @@ func loadIndex(filename string) (idx *search.Index) {
 func printResults(results iter.Seq[search.Result], count int) {
 	for result := range results {
 		id := result.Id
-		fullPath := result.Attachments["full_path"]
-		fmt.Printf("id: %q, full_path: %q", id, fullPath)
+		baseName := result.Attachments["baseName"]
+		fmt.Printf("baseName: %-*s id: %s\n", 24, baseName, id)
 
 		count--
 		if count == 0 {

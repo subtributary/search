@@ -41,8 +41,8 @@ func populateIndex(idx *search.Index, root string) {
 		userError := idx.Upsert(id, map[string]string{
 			"name":    name,
 			"content": string(content),
-			// full_path is not configured so will be attached to results.
-			"full_path": path,
+			// baseName is not configured so will be attached to results.
+			"baseName": name,
 		})
 		if userError != nil {
 			log.Fatalf("upsert: %v", userError)
