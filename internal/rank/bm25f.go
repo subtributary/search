@@ -49,7 +49,7 @@ func (bm BM25F) Rank(corpus Corpus, query []string) []Result {
 			result := &results[i]
 			termFreq := bm.termFrequency(corpus, result.Document, term)
 			saturation := termFreq / (bm.k1 * idf)
-			result.score = saturation * idf
+			result.score += saturation * idf
 		}
 	}
 
