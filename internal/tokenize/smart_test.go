@@ -5,86 +5,92 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/subtributary/search/internal/shared"
 	"github.com/subtributary/search/internal/tokenize"
 )
 
+// echoTokenizer is a simple "tokenizer" for testing purposes.
+// It simply outputs its preset tokens in place of any text it parses.
 type echoTokenizer struct {
 	text string
+}
+
+func newEchoTokenizer(text string) echoTokenizer {
+	return echoTokenizer{text}
 }
 
 func (t echoTokenizer) Tokens(_ string) iter.Seq[string] {
 	return slices.Values([]string{t.text})
 }
 
-func echo(text string) echoTokenizer {
-	return echoTokenizer{text}
-}
-
 func TestSmartTokenizer(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		text      string
-		tokenizer tokenize.SmartTokenizer
-		want      []string
+		name       string
+		text       string
+		tokenizers map[string]tokenize.Tokenizer
+		want       []string
 	}{
 		{
 			name: "empty",
 			text: "",
-			tokenizer: tokenize.NewSmartTokenizer(
-				map[shared.Script]tokenize.Tokenizer{
-					"Latin": echo("hello"),
-				},
-			),
+			tokenizers: map[string]tokenize.Tokenizer{
+				"Latin": newEchoTokenizer("hello"),
+			},
 			want: []string{},
 		},
 		{
-			name: "unconfigured",
-			text: "hello world",
-			tokenizer: tokenize.NewSmartTokenizer(
-				map[shared.Script]tokenize.Tokenizer{},
-			),
-			want: []string{},
+			name:       "unconfigured",
+			text:       "hello world",
+			tokenizers: map[string]tokenize.Tokenizer{},
+			want:       []string{},
 		},
 		{
-			name: "empty and unconfigured tokens",
-			text: "",
-			tokenizer: tokenize.NewSmartTokenizer(
-				map[shared.Script]tokenize.Tokenizer{},
-			),
-			want: []string{},
+			name:       "empty and unconfigured tokens",
+			text:       "",
+			tokenizers: map[string]tokenize.Tokenizer{},
+			want:       []string{},
 		},
 		{
 			name: "single word",
 			text: "hello",
-			tokenizer: tokenize.NewSmartTokenizer(
-				map[shared.Script]tokenize.Tokenizer{
-					"Latin": echo("hello"),
-				},
-			),
+			tokenizers: map[string]tokenize.Tokenizer{
+				"Latin": newEchoTokenizer("hello"),
+			},
 			want: []string{"hello"},
 		},
 		{
 			name: "single script",
 			text: "hello world",
-			tokenizer: tokenize.NewSmartTokenizer(
-				map[shared.Script]tokenize.Tokenizer{
-					"Latin": echo("hello"),
-				},
-			),
+			tokenizers: map[string]tokenize.Tokenizer{
+				"Latin": newEchoTokenizer("hello"),
+			},
 			want: []string{"hello"},
 		},
 		{
 			name: "two scripts",
 			text: "world 안녕",
-			tokenizer: tokenize.NewSmartTokenizer(
-				map[shared.Script]tokenize.Tokenizer{
-					"Latin":  echo("hello"),
-					"Hangul": echo("world"),
-				},
-			),
+			tokenizers: map[string]tokenize.Tokenizer{
+				"Latin":  newEchoTokenizer("hello"),
+				"Hangul": newEchoTokenizer("world"),
+			},
+			want: []string{"hello", "world"},
+		},
+		{
+			name: "leading common",
+			text: "--hello world",
+			tokenizers: map[string]tokenize.Tokenizer{
+				"Latin": newEchoTokenizer("hello"),
+			},
+			want: []string{"hello"},
+		},
+		{
+			name: "intermixed common",
+			text: "hello! 안녕!",
+			tokenizers: map[string]tokenize.Tokenizer{
+				"Latin":  newEchoTokenizer("hello"),
+				"Hangul": newEchoTokenizer("world"),
+			},
 			want: []string{"hello", "world"},
 		},
 	}
@@ -93,9 +99,13 @@ func TestSmartTokenizer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tokens := tt.tokenizer.Tokens(tt.text)
+			subject := tokenize.NewSmartTokenizer()
+			for script, tokenizer := range tt.tokenizers {
+				subject.SetSubTokenizer(script, tokenizer)
+			}
 
 			// We only want the text. If it's right, the script is too.
+			tokens := subject.Tokens(tt.text)
 			var got []string
 			for _, text := range tokens {
 				got = append(got, text)

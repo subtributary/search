@@ -1,6 +1,7 @@
 package tokenize_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/subtributary/search/internal/tokenize"
@@ -13,43 +14,43 @@ func TestScriptTokenizer(t *testing.T) {
 		name     string
 		text     string
 		segments []string
-		scripts  []tokenize.Script
+		scripts  []string
 	}{
 		{
 			name:     "empty",
 			text:     "",
 			segments: []string{},
-			scripts:  []tokenize.Script{},
+			scripts:  []string{},
 		},
 		{
 			name:     "single",
 			text:     "abc",
 			segments: []string{"abc"},
-			scripts:  []tokenize.Script{"Latin"},
+			scripts:  []string{"Latin"},
 		},
 		{
 			name:     "multi",
 			text:     "a술晴",
 			segments: []string{"a", "술", "晴"},
-			scripts:  []tokenize.Script{"Latin", "Hangul", "Han"},
+			scripts:  []string{"Latin", "Hangul", "Han"},
 		},
 		{
 			name:     "modifiers",
 			text:     "c\u00b8",
 			segments: []string{"c\u00b8"},
-			scripts:  []tokenize.Script{"Latin"},
+			scripts:  []string{"Latin"},
 		},
 		{
 			name:     "common",
 			text:     "! ?",
 			segments: []string{},
-			scripts:  []tokenize.Script{},
+			scripts:  []string{},
 		},
 		{
 			name:     "leading common",
 			text:     "!abc",
 			segments: []string{"abc"},
-			scripts:  []tokenize.Script{"Latin"},
+			scripts:  []string{"Latin"},
 		},
 	}
 
@@ -60,22 +61,17 @@ func TestScriptTokenizer(t *testing.T) {
 			subject := tokenize.NewScriptTokenizer()
 			tokens := subject.Tokens(tt.text)
 
-			i := 0
-			for script, text := range tokens {
-				if i >= len(tt.segments) {
-					t.Errorf("len(tokens): got %d, want %d", i, len(tt.segments))
-				}
-				if text != tt.segments[i] {
-					t.Errorf("Text: got %q, want %q", text, tt.segments[i])
-				}
-				if script != tt.scripts[i] {
-					t.Errorf("Script: got %q, want %q", script, tt.scripts[i])
-				}
-				i++
+			var scripts, segments []string
+			for k, v := range tokens {
+				scripts = append(scripts, k)
+				segments = append(segments, v)
 			}
 
-			if t.Failed() {
-				t.FailNow()
+			if !slices.Equal(tt.scripts, scripts) {
+				t.Errorf("scripts: got %v, want %v", scripts, tt.scripts)
+			}
+			if !slices.Equal(tt.segments, segments) {
+				t.Errorf("segments: got %v, want %v", segments, tt.segments)
 			}
 		})
 	}
