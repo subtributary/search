@@ -1,13 +1,28 @@
 # Search
 
-This is a search library.
+A BM25F search implementation with per-script tokenizers and normalizers.
 
-This project is still in initial development and may have breaking changes between commits. Do not use it yet.
+Our search implementation is built to handle documents in multiple languages.
+The per-script customization lets us choose how best to handle each one.
 
-## Key features
+This package is still in initial development, and there may be breaking changes between versions.
+Version 1.0 will be released after its successful full integration into our
+[Musings](https://github.com/subtributary/musings) project.
 
-tbd
+## Features
+
+* Multiple fields per document that can be configured and searched
+* Attachment strings that are returned alongside document ids in search results
+* Separate normalizer and tokenizer configurations for every Unicode script
+* Sane defaults for every script
+* Supported normalizers:
+    * `LowerCase`, `NFC`, `NFD`, `NFKC`,  `NFKD`
+* Supported tokenizers:
+    * `UAX29`, `Unigram`, `Bigram`, `Trigram`
 
 ## Quick start
 
-tbd
+```
+go get "github.com/subtributary/search"
+```
+
