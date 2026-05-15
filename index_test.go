@@ -31,7 +31,56 @@ var documents = map[string]map[string]string{
 	},
 }
 
-// todo: assert that all configured fields are added to documents
+func TestIndex_Upsert(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		content   map[string]string
+		wantError bool
+	}{
+		{
+			name:      "no fields",
+			content:   map[string]string{},
+			wantError: true,
+		},
+		{
+			name:      "only fields",
+			content:   map[string]string{"title": ""},
+			wantError: false,
+		},
+		{
+			name:      "only attachments",
+			content:   map[string]string{"attached": ""},
+			wantError: true,
+		},
+		{
+			name:      "fields and attachments",
+			content:   map[string]string{"title": "", "attached": ""},
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			index, err := search.NewIndex(
+				search.WithField("title", 1),
+			)
+			if err != nil {
+				t.Fatalf("new index: %v", err)
+			}
+
+			err = index.Upsert(tt.name, tt.content)
+			if tt.wantError && err == nil {
+				t.Errorf("want error, got none")
+			} else if !tt.wantError && err != nil {
+				t.Errorf("want no error, got %v", err)
+			}
+		})
+	}
+}
 
 func TestIndex(t *testing.T) {
 	t.Parallel()

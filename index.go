@@ -131,7 +131,7 @@ func (idx *Index) MarshalJSON() ([]byte, error) {
 // not attached to search results. To have both, separate fields are needed.
 //
 // todo: ensure all configured fields are set.
-func (idx *Index) Upsert(id string, fields map[string]string) {
+func (idx *Index) Upsert(id string, fields map[string]string) error {
 	document := rank.NewDocument()
 	for field, text := range fields {
 		field := rank.Field(field)
@@ -141,7 +141,20 @@ func (idx *Index) Upsert(id string, fields map[string]string) {
 			document.SetStream(field, idx.tokenize(text))
 		}
 	}
+
+	// Validation
+	if len(document.Streams) != len(idx.fieldConfigs) {
+		var missing []string
+		for field, _ := range idx.fieldConfigs {
+			if _, ok := document.Streams[field]; !ok {
+				missing = append(missing, string(field))
+			}
+		}
+		return fmt.Errorf("document is missing fields: %v", missing)
+	}
+
 	idx.corpus.Upsert(id, document)
+	return nil
 }
 
 func (idx *Index) tokenize(text string) []string {
