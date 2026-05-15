@@ -61,7 +61,6 @@ func WithTokenizer(script string, id Tokenizer) Option {
 }
 
 type Index struct {
-	version     string
 	normalizers map[string][]Normalizer // Used for state saving normalizer
 	tokenizers  map[string]Tokenizer    // Used for state saving tokenizer
 
@@ -71,9 +70,10 @@ type Index struct {
 	tokenizer    tokenize.SmartTokenizer
 }
 
+// NewIndex creates a new search indexer with the provided options.
+// An error is returned if the configuration is invalid.
 func NewIndex(opts ...Option) (*Index, error) {
 	idx := &Index{
-		version:      "0.0.0",
 		normalizers:  make(map[string][]Normalizer),
 		tokenizers:   make(map[string]Tokenizer),
 		fieldConfigs: make(map[rank.Field]rank.FieldConfig),
@@ -116,7 +116,7 @@ func (idx *Index) MarshalJSON() ([]byte, error) {
 		Fields      map[rank.Field]rank.FieldConfig `json:"fields"`
 		Corpus      rank.Corpus                     `json:"corpus"`
 	}{
-		Version:     idx.version,
+		Version:     Version,
 		Normalizers: idx.normalizers,
 		Tokenizers:  idx.tokenizers,
 		Fields:      idx.fieldConfigs,
@@ -129,6 +129,8 @@ func (idx *Index) MarshalJSON() ([]byte, error) {
 // Fields that have a configuration are parsed into internal metadata,
 // but fields that do not have a configuration are treated as attachments.
 // Attachments are returned unaltered alongside search results.
+//
+// An error is returned if any configured fields are missing from the document.
 func (idx *Index) Upsert(id string, fields map[string]string) error {
 	document := rank.NewDocument()
 	for field, text := range fields {
@@ -155,10 +157,7 @@ func (idx *Index) Upsert(id string, fields map[string]string) error {
 }
 
 type Result struct {
-	// Id is the identifier of the document used when calling Index.Upsert.
-	Id string
-
-	// Attachments stores additional user data associated with the document.
+	Id          string
 	Attachments map[string]string
 }
 
